@@ -61,7 +61,6 @@ class ManualControl(Node):
         self.publisher_velocity.publish(msg)
 
     def timer_callback(self, command):
-        print(command)
         if command == "takeoff":
             # Perform the action corresponding to "start"
             self.publisher_takeoff.publish(Empty())
@@ -96,9 +95,10 @@ def main(args=None):
     node = ManualControl()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except:
         pass
     finally:
+        print("Shutting down node")
         node.shutdown()
         rclpy.shutdown()
 
