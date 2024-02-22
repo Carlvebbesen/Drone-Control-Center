@@ -78,8 +78,8 @@ export const useControlSocket = () => {
   const sendControlEvent = (controlCommand: string) => {
     //socket.volatile.emit("command", "if we need to only send latest event, and dont buffer up");
     if (socket) {
-      updateSentData({ type: "command", msg: controlCommand });
-      socket.emit("manual_control", controlCommand, (response: any) => {
+      updateSentData({type: "command", msg: controlCommand})
+      socket.volatile.emit("manual_control", controlCommand, (response: any) => {
         updateData({ type: "command", msg: response });
       });
     }
