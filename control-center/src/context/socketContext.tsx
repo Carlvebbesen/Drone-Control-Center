@@ -1,12 +1,15 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { SocketContextInterface, SocketDataType } from "@/hooks/socketTypes";
+import { ReactNode, createContext, useEffect, useState } from "react";
 import { Socket, io } from "socket.io-client";
-import { SocketDataType } from "./socketTypes";
 
-export const useControlSocket = () => {
+export const SocketContext = createContext<SocketContextInterface | null>(null);
+export const SocketContextProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const [sentData, setSentData] = useState<SocketDataType[]>([]);
-  const [socketData, setSocketData] = useState<SocketDataType[]>([]);
+  const [receivedData, setReceivedData] = useState<SocketDataType[]>([]);
   const [socket, setSocket] = useState<Socket<any, any> | null>(null);
 
   useEffect(() => {
@@ -14,7 +17,7 @@ export const useControlSocket = () => {
     setSocket(socketId);
   }, []);
 
-  const updateData = ({
+  const updateReceivedData = ({
     msg,
     type,
   }: {
@@ -22,7 +25,7 @@ export const useControlSocket = () => {
     type: SocketDataType["type"];
   }) => {
     const now = new Date().toLocaleTimeString();
-    setSocketData((prev) => [{ time: now, type: type, msg: msg }, ...prev]);
+    setReceivedData((prev) => [{ time: now, type: type, msg: msg }, ...prev]);
   };
   const updateSentData = ({
     msg,
@@ -37,17 +40,17 @@ export const useControlSocket = () => {
   useEffect(() => {
     if (socket) {
       socket.on("connect", () => {
-        updateData({ type: "connected", msg: `id: ${socket.id}` });
+        updateReceivedData({ type: "connected", msg: `id: ${socket.id}` });
         const engine = socket.io.engine;
         engine.on("close", (reason) =>
-          updateData({ msg: reason, type: "disconnected" })
+          updateReceivedData({ msg: reason, type: "disconnected" })
         );
       });
       socket.on("test", (msg: string) => {
-        updateData({ type: "command", msg: msg });
+        updateReceivedData({ type: "command", msg: msg });
       });
       socket.on("connect_error", () => {
-        updateData({
+        updateReceivedData({
           msg: "socket closed, Reconnecting ... ",
           type: "error",
         });
@@ -61,49 +64,51 @@ export const useControlSocket = () => {
           // the disconnection was initiated by the server, you need to reconnect manually
           socket.connect();
         }
-        updateData({
+        updateReceivedData({
           msg: details["description"],
           type: "disconnected",
         });
       });
-      //TODO: Fix video stream
-      socket.on("video", (video: string) => {
-        console.log(typeof video);
-        updateData({
-          msg: "video",
-          type: "command",
-        });
-      });
       socket.on("error", (errorMsg: string) => {
-        updateData({
+        updateReceivedData({
           msg: errorMsg,
           type: "error",
         });
       });
     }
   }, [socket]);
- //TODO: Fix control event
   const sendControlEvent = (controlCommand: string) => {
-    //socket.volatile.emit("command", "if we need to only send latest event, and dont buffer up");
     if (socket) {
-      updateSentData({type: "command", msg: controlCommand})
-      socket.volatile.emit("manual_control", controlCommand, (response: any) => {
-        updateData({ type: "command", msg: response });
-      });
+      updateSentData({ type: "command", msg: controlCommand });
+      socket.volatile.emit(
+        "manual_control",
+        controlCommand,
+        (response: any) => {
+          updateReceivedData({ type: "command", msg: response });
+        }
+      );
     }
   };
   const testConnection = () => {
     if (socket) {
-      socket.emit("test", "test ack return",(response: any) => {
-        updateData({ type: "command", msg: response });
-      updateSentData({ type: "command", msg: "Init testing ..." });
-    });
-  }
+      socket.emit("test", "test ack return", (response: any) => {
+        updateReceivedData({ type: "command", msg: response });
+        updateSentData({ type: "command", msg: "Init testing ..." });
+      });
+    }
   };
-  return {
-    socketData,
-    sentData,
-    sendControlEvent,
-    testConnection,
-  };
+
+  return (
+    <SocketContext.Provider
+      value={{
+        sentData: sentData,
+        receivedData: receivedData,
+        testConnection: testConnection,
+        sendControlCommand: sendControlEvent,
+        getSocketConnection: socket,
+      }}
+    >
+      {children}
+    </SocketContext.Provider>
+  );
 };
