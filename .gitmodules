@@ -1,3 +1,0 @@
-[submodule "tello-ros2"]
-	path = tello-ros2
-	url = https://github.com/tentone/tello-ros2

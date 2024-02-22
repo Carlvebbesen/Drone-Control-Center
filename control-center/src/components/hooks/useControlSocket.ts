@@ -10,7 +10,7 @@ export const useControlSocket = () => {
   const [socket, setSocket] = useState<Socket<any, any> | null>(null);
 
   useEffect(() => {
-    const socketId = io("127.0.0.1:8000");
+    const socketId = io("0.0.0.0:5683");
     setSocket(socketId);
   }, []);
 

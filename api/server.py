@@ -1,64 +1,49 @@
-import socketio
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from flask import Flask, request, jsonify
+from flask_socketio import SocketIO, emit
 import socket
-from time import sleep
 
-app = FastAPI()
+app = Flask(__name__)
+socketio = SocketIO(app)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# For ROS2 Nodes Communication
+ros2_ports = {
+    'manual_control': 5685,
+}
 
-print("here")
-# Main router for the API.
-# app.include_router(router=api_router, prefix="/api")
-@app.get('/')
-async def index():
-    return {'message': 'Hello Drone pilots!'}
+ros2_sockets = {}
 
-sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='asgi')
-socket_app = socketio.ASGIApp(sio, app)
+def connect_to_ros2_node(port):
+    try:
+        ros2_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        ros2_socket.connect(('localhost', port))
+        return ros2_socket
+    except:
+        print("could not connect")
+        return None
 
+@socketio.on('message_to_ros2')
+def handle_message_to_ros2(socket_connection: socket.socket, message: str):
+    socket_connection.sendall(message.encode())
+    response = socket_connection.recv(1024)
+    emit('from_ros2', {'data': response.decode()})
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['*'],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@socketio.on('connect')
+def test_connect():
+    emit('connect', {'data': 'Connected'})
 
-
-@sio.event
-async def connect(sid, environ, auth):
-    print(f'{sid}: connected')
-
-
-@sio.on("control")
-async def control(sid, message):
-    socket.bind
-    return message
-
-
-@sio.on("test")
-async def test(sid, message):
-    await sio.emit("test", "test successful", to=sid)
-
-
-@sio.event
-async def disconnect(sid):
-    print(f'{sid}: disconnected')
+@socketio.event
+def message_node(data: dict):
+    node = data["node"]
+    message = data["message"]
+    port = ros2_ports[node]
+    try:
+        socket_connection = connect_to_ros2_node(port)
+        ros2_sockets[node] = socket_connection
+        print(socket_connection)
+        handle_message_to_ros2(ros2_sockets[node], message)
+    except Exception as e:
+        print(e)
+        emit("error", {'data': f'no node named {data["node"]}'})
 
 if __name__ == '__main__':
-    uvicorn.run("main:socket_app", port=8000, reload=True)
-    # rclpy.init()
-    # node = API()
-    # rclpy.spin(node)
-    # node.shutdown()
-    # rclpy.shutdown()
+    socketio.run(app, debug=True)
