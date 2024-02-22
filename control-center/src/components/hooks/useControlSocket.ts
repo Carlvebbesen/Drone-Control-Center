@@ -74,6 +74,12 @@ export const useControlSocket = () => {
           type: "command",
         });
       });
+      socket.on("error", (errorMsg: string) => {
+        updateData({
+          msg: errorMsg,
+          type: "error",
+        });
+      });
     }
   }, [socket]);
  //TODO: Fix control event
