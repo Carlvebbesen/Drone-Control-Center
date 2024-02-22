@@ -5,7 +5,7 @@ import threading
 import asyncio
 
 app = Flask(__name__)
-sio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app,cors_allowed_origins="*")
 
 # For ROS2 Nodes Communication
 ros2_ports = {
@@ -63,6 +63,26 @@ async def recieve_message(port: int):
     except Exception as e:
         print(f'Error sending message to node at port {port}: {e}')
         # Consider removing or resetting the socket in ros2_sockets if it's no longer valid
+
+@socketio.on('connect')
+def test_connect():
+    print("Connected to client")
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
+
+@socketio.on('test')
+def test(message):
+    print(message)
+    emit('test', 'Test Emit')
+    return message
+
+
+@socketio.on_error()
+def error_handler(e):
+    print("Error",e)
+    pass
 
 @sio.event
 def connect():

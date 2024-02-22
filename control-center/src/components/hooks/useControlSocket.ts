@@ -10,7 +10,7 @@ export const useControlSocket = () => {
   const [socket, setSocket] = useState<Socket<any, any> | null>(null);
 
   useEffect(() => {
-    const socketId = io("0.0.0.0:5683");
+    const socketId = io("127.0.0.1:5000");
     setSocket(socketId);
   }, []);
 
@@ -55,6 +55,7 @@ export const useControlSocket = () => {
           socket.connect();
         }, 3000);
       });
+
       socket.on("disconnect", (reason, details) => {
         if (reason === "io server disconnect") {
           // the disconnection was initiated by the server, you need to reconnect manually
@@ -65,7 +66,7 @@ export const useControlSocket = () => {
           type: "disconnected",
         });
       });
-
+      //TODO: Fix video stream
       socket.on("video", (video: string) => {
         console.log(typeof video);
         updateData({
@@ -73,22 +74,31 @@ export const useControlSocket = () => {
           type: "command",
         });
       });
+      socket.on("error", (errorMsg: string) => {
+        updateData({
+          msg: errorMsg,
+          type: "error",
+        });
+      });
     }
   }, [socket]);
-
+ //TODO: Fix control event
   const sendControlEvent = (controlCommand: string) => {
     //socket.volatile.emit("command", "if we need to only send latest event, and dont buffer up");
     if (socket) {
-      socket.emit("control", controlCommand, (response: any) => {
-        updateSentData({ type: "command", msg: response });
+      updateSentData({type: "command", msg: controlCommand})
+      socket.emit("manual_control", controlCommand, (response: any) => {
+        updateData({ type: "command", msg: response });
       });
     }
   };
   const testConnection = () => {
     if (socket) {
-      socket.emit("test", "test successful");
-      updateSentData({ type: "command", msg: "testing ..." });
-    }
+      socket.emit("test", "test ack return",(response: any) => {
+        updateData({ type: "command", msg: response });
+      updateSentData({ type: "command", msg: "Init testing ..." });
+    });
+  }
   };
   return {
     socketData,
