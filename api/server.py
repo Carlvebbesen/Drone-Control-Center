@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, emit
 import socket
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app,cors_allowed_origins="*")
 
 # For ROS2 Nodes Communication
 ros2_ports = {
@@ -29,7 +29,28 @@ def handle_message_to_ros2(socket_connection: socket.socket, message: str):
 
 @socketio.on('connect')
 def test_connect():
-    emit('connect', {'data': 'Connected'})
+    print("Connected to client")
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
+
+@socketio.on('test')
+def test(message):
+    print(message)
+    emit('test', 'Test Emit')
+    return message
+
+
+@socketio.on_error()
+def error_handler(e):
+    print("Error",e)
+    pass
+
+@socketio.on("manual_control")
+def manual_control(message):
+    print(message)
+    return message + " Done"
 
 @socketio.event
 def message_node(data: dict):
