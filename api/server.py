@@ -3,78 +3,85 @@ from flask_socketio import SocketIO
 import socket
 import threading
 import asyncio
+import struct
+import pickle
+import cv2
+import base64
+import numpy as np
 
 app = Flask(__name__)
-sio = SocketIO(app,cors_allowed_origins="*")
+sio = SocketIO(app, cors_allowed_origins="*")
 
 # For ROS2 Nodes Communication
 ros2_ports = {
-    'manual_control': 5685,
-    'video_feed': 5690
+    'manual_control': 5685,  # Port for sending control commands
+    'video_feed': 5533       # Port for receiving video feed
 }
 
-# This dictionary will store the socket connections
-ros2_sockets = {}
-
-def get_or_create_socket(port):
-    if port in ros2_sockets:
-        # Reuse the existing socket
-        return ros2_sockets[port]
-    else:
-        # Create a new socket connection and store it
-        new_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        new_socket.connect(('localhost', port))
-        ros2_sockets[port] = new_socket
-        return new_socket
-
-def start_asyncio_task(target, *args):
-    def run():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        coro = target(*args)
-        loop.run_until_complete(coro)
-        loop.close()
-    t = threading.Thread(target=run)
-    t.start()
-
-async def send_message(port: int, message: str):
+def send_message(port: int, message: str):
+    """Function to send messages to a specific port."""
     try:
-        # Reuse an existing socket or create a new one
-        ros2_socket = get_or_create_socket(port)
-        ros2_socket.sendall(message.encode())
-        response = ros2_socket.recv(1024).decode()
-        print(f"Reponse: {response}")
-        # Use the saved `sid` to emit the response back to the correct client
-        sio.emit("from_ros2", {'data': response})
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as ros2_socket:
+            ros2_socket.connect(('localhost', port))
+            ros2_socket.sendall(message.encode())
+            response = ros2_socket.recv(1024).decode()
+            print(f"Response: {response}")
+            # Emit response back to the client if necessary
     except Exception as e:
         print(f'Error sending message to node at port {port}: {e}')
-        # Consider removing or resetting the socket in ros2_sockets if it's no longer valid
 
-# Not sure if this works yet
-async def recieve_message(port: int):
-    try:
-        # Reuse an existing socket or create a new one
-        ros2_socket = get_or_create_socket(port)
-        ros2_socket.bind("localhost", port)
-        ros2_socket.listen(1)
-        print(f"Listening for messages on port {port}...")
-        response = ros2_socket.recv(1024)
-        sio.emit("from_ros2", {'data': response})
-    except Exception as e:
-        print(f'Error sending message to node at port {port}: {e}')
-        # Consider removing or resetting the socket in ros2_sockets if it's no longer valid
+def listen_for_video_feed(port):
+    """Function to listen for incoming video feed on a specific port."""
+    def handle_client_connection(client_socket):
+        try:
+            while True:
+                # Receive the size of the pickled image
+                raw_msglen = recvall(client_socket, 8)
+                if not raw_msglen:
+                    break
+                msglen = struct.unpack("L", raw_msglen)[0]
 
-@sio.on('test')
-def test(message):
-    print(message)
-    sio.emit('test', 'Test Emit')
-    return message
+                # Receive the actual image data
+                data = recvall(client_socket, msglen)
+                if not data:
+                    break
 
+                # Unpickle the image data
+                cv_image = pickle.loads(data)
+                
+                # Encode the image as JPEG
+                _, buffer = cv2.imencode('.jpg', cv_image)
+                
+                # Convert to base64 encoding and decode to string
+                jpg_as_text = base64.b64encode(buffer).decode('utf-8')
+                sio.emit('image_data', {'image': jpg_as_text})
+        finally:
+            client_socket.close()
 
-@sio.on_error()
-def error_handler(e):
-    print("Error",e)
-    pass
+    def recvall(sock, n):
+        """Helper function to receive n bytes or return None if EOF is hit."""
+        data = b''
+        while len(data) < n:
+            packet = sock.recv(n - len(data))
+            if not packet:
+                return None
+            data += packet
+        return data
+
+    def server_listen():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind(('localhost', port))
+            server_socket.listen()
+            print(f"Server listening on port {port}...")
+            while True:
+                client_socket, addr = server_socket.accept()
+                print(f"Accepted connection from {addr}")
+                client_thread = threading.Thread(target=handle_client_connection, args=(client_socket,))
+                client_thread.start()
+
+    # Start the server listening in a new thread
+    threading.Thread(target=server_listen).start()
 
 @sio.event
 def connect():
@@ -88,92 +95,9 @@ def disconnect():
 def handle_manual_control(data):
     print('Manual control event received:', data)
     port = ros2_ports['manual_control']
-    start_asyncio_task(send_message, port, data)
+    threading.Thread(target=send_message, args=(port, data)).start()
     return data + " Done"
 
-# Not sure if this works yet
-@sio.on('video_feed')
-def handle_video_feed(data):
-    print('Video feed event received:', data)
-    port = ros2_ports['video_feed']
-    start_asyncio_task(recieve_message, port, data["message"])
-
 if __name__ == '__main__':
-    sio.run(app, debug=True)
-
-
-# from flask import Flask, request, jsonify
-# from flask_socketio import SocketIO, emit
-# import socket
-# import threading
-# import asyncio
-# import socketio
-
-# app = Flask(__name__)
-# sio = SocketIO(app, cors_allowed_origins="*")
-
-# async_mode = None
-# node_sio = socketio.AsyncClient()
-
-
-# # For ROS2 Nodes Communication
-# ros2_ports = {
-#     'manual_control': 5685,
-#     'video_feed': 5690
-# }
-
-# ros2_sockets = {}
-
-
-# def start_asyncio_task(target, *args):
-#     def run():
-#         # Create a new event loop for the thread
-#         loop = asyncio.new_event_loop()
-#         asyncio.set_event_loop(loop)
-        
-#         # Schedule the coroutine to be run on the new event loop
-#         coro = target(*args)
-#         loop.run_until_complete(coro)
-        
-#         # Close the loop at the end of the task
-#         loop.close()
-
-#     # Create and start a new thread for running the asyncio task
-#     t = threading.Thread(target=run)
-#     t.start()
-
-# async def connect_to_node(port: int, message: str):
-#     try:
-#         ros2_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         ros2_socket.connect(('localhost', port))
-#         ros2_socket.sendall(message.encode())
-#         response = ros2_socket.recv(1024)
-#         emit("from_ros2", response)
-#         ros2_socket.close()
-#     except Exception as e:
-#         print(f'Connection to node at {port} failed: {e}')
-
-# @sio.event
-# def connect():
-#     print('WebApp connected:', request.sid)
-
-# @sio.event
-# def disconnect():
-#     print('WebApp disconnected:', request.sid)
-
-# @sio.on('manual_control')
-# def handle_manual_control(data):
-#     print('Manual control event received:', data)
-#     # Here, connect to the drone control node
-#     port = ros2_ports['manual_control']
-#     start_asyncio_task(connect_to_node, port, data["message"])
-
-# @sio.on('video_feed')
-# def handle_video_feed(data):
-#     print('Video feed event received:', data)
-#     # Here, connect to the video feed node
-#     port = ros2_ports['video_feed']
-#     start_asyncio_task(connect_to_node, port, data["message"])
-
-# if __name__ == '__main__':
-#     sio.run(app, debug=True)
+    listen_for_video_feed(ros2_ports['video_feed'])  # Start listening for video feed
+    sio.run(app, debug=True, use_reloader=False)
