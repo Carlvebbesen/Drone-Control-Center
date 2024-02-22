@@ -6,7 +6,7 @@ import { SocketDataType } from "./socketTypes";
 
 export const useControlSocket = () => {
   const [sentData, setSentData] = useState<SocketDataType[]>([]);
-  const [socketData, setSocketData] = useState<SocketDataType[]>([]);
+  const [receivedData, setreceivedData] = useState<SocketDataType[]>([]);
   const [socket, setSocket] = useState<Socket<any, any> | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export const useControlSocket = () => {
     type: SocketDataType["type"];
   }) => {
     const now = new Date().toLocaleTimeString();
-    setSocketData((prev) => [{ time: now, type: type, msg: msg }, ...prev]);
+    setreceivedData((prev) => [{ time: now, type: type, msg: msg }, ...prev]);
   };
   const updateSentData = ({
     msg,
@@ -66,14 +66,6 @@ export const useControlSocket = () => {
           type: "disconnected",
         });
       });
-      //TODO: Fix video stream
-      socket.on("video", (video: string) => {
-        console.log(typeof video);
-        updateData({
-          msg: "video",
-          type: "command",
-        });
-      });
       socket.on("error", (errorMsg: string) => {
         updateData({
           msg: errorMsg,
@@ -82,11 +74,11 @@ export const useControlSocket = () => {
       });
     }
   }, [socket]);
- //TODO: Fix control event
+  //TODO: Fix control event
   const sendControlEvent = (controlCommand: string) => {
     //socket.volatile.emit("command", "if we need to only send latest event, and dont buffer up");
     if (socket) {
-      updateSentData({type: "command", msg: controlCommand})
+      updateSentData({ type: "command", msg: controlCommand });
       socket.emit("manual_control", controlCommand, (response: any) => {
         updateData({ type: "command", msg: response });
       });
@@ -94,14 +86,14 @@ export const useControlSocket = () => {
   };
   const testConnection = () => {
     if (socket) {
-      socket.emit("test", "test ack return",(response: any) => {
+      socket.emit("test", "test ack return", (response: any) => {
         updateData({ type: "command", msg: response });
-      updateSentData({ type: "command", msg: "Init testing ..." });
-    });
-  }
+        updateSentData({ type: "command", msg: "Init testing ..." });
+      });
+    }
   };
   return {
-    socketData,
+    receivedData,
     sentData,
     sendControlEvent,
     testConnection,

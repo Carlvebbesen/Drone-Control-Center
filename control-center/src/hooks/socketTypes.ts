@@ -1,3 +1,5 @@
+import { Socket } from "socket.io-client";
+
 export interface ServerToClientEvents {
   noArg: () => void;
   basicEmit: (a: number, b: string, c: Buffer) => void;
@@ -21,4 +23,12 @@ export interface InterServerEvents {
 export interface SocketData {
   name: string;
   age: number;
+}
+
+export interface SocketContextInterface {
+  sentData: SocketDataType[];
+  receivedData: SocketDataType[];
+  testConnection: () => void;
+  sendControlCommand: (controlCommand: string) => void;
+  getSocketConnection: Socket<any, any> | null;
 }
