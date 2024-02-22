@@ -5,7 +5,7 @@ import threading
 import asyncio
 
 app = Flask(__name__)
-socketio = SocketIO(app,cors_allowed_origins="*")
+sio = SocketIO(app,cors_allowed_origins="*")
 
 # For ROS2 Nodes Communication
 ros2_ports = {
@@ -64,22 +64,14 @@ async def recieve_message(port: int):
         print(f'Error sending message to node at port {port}: {e}')
         # Consider removing or resetting the socket in ros2_sockets if it's no longer valid
 
-@socketio.on('connect')
-def test_connect():
-    print("Connected to client")
-
-@socketio.on('disconnect')
-def test_disconnect():
-    print('Client disconnected')
-
-@socketio.on('test')
+@sio.on('test')
 def test(message):
     print(message)
-    emit('test', 'Test Emit')
+    sio.emit('test', 'Test Emit')
     return message
 
 
-@socketio.on_error()
+@sio.on_error()
 def error_handler(e):
     print("Error",e)
     pass
@@ -96,7 +88,8 @@ def disconnect():
 def handle_manual_control(data):
     print('Manual control event received:', data)
     port = ros2_ports['manual_control']
-    start_asyncio_task(send_message, port, data["message"])
+    start_asyncio_task(send_message, port, data)
+    return data + " Done"
 
 # Not sure if this works yet
 @sio.on('video_feed')
