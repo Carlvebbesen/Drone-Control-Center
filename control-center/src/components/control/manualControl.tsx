@@ -14,12 +14,12 @@ export const ManualControl = () => {
       <Button onClick={() => socket.testConnection()}>Test Connection</Button>
       <div className="grid grid-cols-2 w-full gap-10 mt-20 h-full">
         <SocketLogger
-          className="mx-4 px-4 overflow-scroll h-96 w-full"
+          className="mx-4 px-4 h-96 w-full"
           data={socket.socketData}
           title="Socket Data"
         />
         <SocketLogger
-          className="mx-4 px-4 min-h-96 overflow-scroll h-96 w-full"
+          className="mx-4 px-4 min-h-96 h-96 w-full"
           data={socket.sentData}
           title="Sent Data"
         />
