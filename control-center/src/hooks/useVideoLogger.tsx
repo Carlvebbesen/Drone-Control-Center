@@ -61,7 +61,7 @@ export const useVideoLogger = () => {
           type: "error",
         });
       });
-      socket.on("video_dummy", (data: any) => {
+      socket.on("image_data", (data: any) => {
         updateData({ msg: data, type: "command" });
       });
     }

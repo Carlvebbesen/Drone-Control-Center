@@ -1,34 +1,25 @@
 "use client";
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { SocketLogger } from "../control/socketLogger";
 import { useVideoLogger } from "@/hooks/useVideoLogger";
 
 export const VideoStream = () => {
-  const videoRef = useRef(null);
-  const videoStream = useVideoLogger();
-  // useEffect(() => {
-  //   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-  //     navigator.mediaDevices
-  //       .getUserMedia({ video: true })
-  //       .then((stream) => {
-  //         if (videoRef.current) {
-  //           videoRef.current.srcObject = stream;
-  //         }
-  //       })
-  //       .catch((err) => {
-  //         console.log(err);
-  //       });
-  //   }
-  // }, []);
+  const { videoLog } = useVideoLogger();
+  const [imageSrc, setImageSrc] = useState('');
+
+  useEffect(() => {
+    // Find the latest "image_data" type message in the videoLog
+    const imageData = videoLog.find((log) => log.type === "command");
+    if (imageData && imageData.msg) {
+      setImageSrc(imageData.msg);
+    }
+  }, [videoLog]);
 
   return (
     <div>
-      <SocketLogger
-        title={"Video Logg"}
-        data={videoStream.videoLog}
-        className="mx-4 px-4 h-96 w-full"
-      />
-      <video ref={videoRef} autoPlay />;
+      {/* Display the image using the base64 string stored in imageSrc */}
+      {imageSrc && <img src={`data:image/jpeg;base64,${imageSrc}`} alt="Video Stream" style={{ width: '100%' }} />}
     </div>
   );
 };
+

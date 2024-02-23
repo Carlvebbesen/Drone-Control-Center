@@ -54,7 +54,7 @@ def listen_for_video_feed(port):
                 
                 # Convert to base64 encoding and decode to string
                 jpg_as_text = base64.b64encode(buffer).decode('utf-8')
-                sio.emit('image_data', {'image': jpg_as_text})
+                sio.emit('image_data', jpg_as_text)
         finally:
             client_socket.close()
 
