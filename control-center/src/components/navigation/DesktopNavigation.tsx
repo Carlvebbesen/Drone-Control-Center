@@ -1,44 +1,39 @@
+"use client";
 import Link from "next/link";
-import LogoLink from "../LogoLink";
-import navigation from "@/lib/navigation";
-import { useRouter } from "next/router";
+import { usePathname } from "next/navigation";
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuList,
-} from "../ui/NavigationMenu";
-import { Button } from "../button";
-import { cn } from "@/utils/cn";
-import ProfileAvatar from "../ProfileAvatar";
+} from "../ui/navigation-menu";
+import { useContext } from "react";
+import { AuthContext } from "@/context/authContext";
+import navigation from "@/lib/navigation";
+import { Button } from "../ui/button";
+import ProfileAvatar from "./profileAvatar";
+import { DroneLogo } from "../logo/droneLogo";
+import { signInWithPopupCustom } from "@/lib/firebase/auth";
 
 const DesktopNavigation = () => {
-  const router = useRouter();
-
-  // TODO: Replace with real auth check
-  const isSignedIn = true;
-
+  const pathname = usePathname();
+  const { isSignedIn } = useContext(AuthContext);
   return (
-    <NavigationMenu className="hidden md:flex">
+    <NavigationMenu className="mt-3  px-6 min-w-full h-20 flex justify-between">
       <div className="flex items-center justify-start">
-        <LogoLink />
+        <Link href="/">
+          <DroneLogo />
+        </Link>
       </div>
 
-      {isSignedIn && (
-        <NavigationMenuList className="gap-x-2">
-          {/* Right part of navigation, with the rest */}
+      {isSignedIn ? (
+        <NavigationMenuList className="w-full gap-x-20 grow">
           {navigation.map((item, i) => {
-            const active = router.pathname === item.href;
-            const isTime = item.href === "/timer";
+            const active = pathname === item.href;
 
             return (
               <NavigationMenuItem key={i}>
                 <Link href={item.href}>
-                  <Button
-                    variant={active ? "subtle" : "link"}
-                    className={cn(
-                      isTime && "bg-red-500 text-slate-50 hover:bg-red-600"
-                    )}
-                  >
+                  <Button variant={active ? "outline" : "link"}>
                     {item.label}
                   </Button>
                 </Link>
@@ -55,6 +50,10 @@ const DesktopNavigation = () => {
             )}
           </div>
         </NavigationMenuList>
+      ) : (
+        <NavigationMenuItem key={"loginLink"}>
+          <Button onClick={()=>signInWithPopupCustom()} variant={"outline"}>{"LogIn"}</Button>
+        </NavigationMenuItem>
       )}
     </NavigationMenu>
   );

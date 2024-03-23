@@ -1,11 +1,25 @@
-import { ManualControl } from "@/components/control/manualControl";
-import { VideoStream } from "@/components/video/videoStream";
+"use client";
+import { Button } from "@/components/ui/button";
+import { AuthContext } from "@/context/authContext";
+import { signInWithPopupCustom } from "@/lib/firebase/auth";
+import { useContext } from "react";
 
 export default function Home() {
+  const user = useContext(AuthContext);
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-5">
-      <VideoStream />
-      <ManualControl />
-    </main>
+    <div>
+      <p>Hei dett er en test</p>
+      <Button onClick={() => signInWithPopupCustom()}>klikk meg!</Button>
+      <h1>Brukeren: </h1>
+      <div>{user?.user?.displayName}</div>
+      <div>{user?.user?.email}</div>
+      <div>{user?.user?.emailVerified}</div>
+      <img
+        width={300}
+        height={300}
+        alt="profilePic"
+        src={user?.user?.photoURL ?? ""}
+      />
+    </div>
   );
 }

@@ -1,13 +1,7 @@
 import DesktopNavigation from "./DesktopNavigation";
-import MobileNavigation from "./MobileNavigation";
 
 const Navigation = () => {
-  return (
-    <>
-      <DesktopNavigation />
-      <MobileNavigation />
-    </>
-  );
+  return <DesktopNavigation />;
 };
 
 export default Navigation;

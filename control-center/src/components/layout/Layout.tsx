@@ -15,13 +15,9 @@ const Layout = ({ children }: Props) => {
         <meta name="description" content="Internarena" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <div className="flex min-h-screen w-screen flex-col items-center">
-        <Navigation />
+      <Navigation />
 
-        <main className="flex h-full w-screen flex-col items-center">
-          {children}
-        </main>
-      </div>
+      <main className="flex h-full flex-col items-center">{children}</main>
       <Footer />
     </>
   );

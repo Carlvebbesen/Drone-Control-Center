@@ -2,6 +2,8 @@ import { SocketContextInterface, SocketDataType } from "@/hooks/socketTypes";
 import { ReactNode, createContext, useEffect, useState } from "react";
 import { Socket, io } from "socket.io-client";
 
+
+//brukes ikke
 export const SocketContext = createContext<SocketContextInterface | null>(null);
 export const SocketContextProvider = ({
   children,
