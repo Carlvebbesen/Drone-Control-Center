@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "api_manual_control = api.manual_control:main"
+            "api_manual_control = api.manual_control:main",
+            'video_stream = api.video_stream:main',
         ],
     },
 )
