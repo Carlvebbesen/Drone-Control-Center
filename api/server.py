@@ -2,15 +2,45 @@ from flask import Flask, request
 from flask_socketio import SocketIO
 import socket
 import threading
-import asyncio
 import struct
 import pickle
 import cv2
 import base64
-import numpy as np
+import json
+from firebase_admin import firestore, credentials, initialize_app
+
+from api.object_detection_service import find_detensions
 
 app = Flask(__name__)
 sio = SocketIO(app, cors_allowed_origins="*")
+
+# Application Default credentials are automatically created.
+cred = credentials.Certificate('./drone-control-db-358c9ef52864.json')
+firebase = initialize_app(cred)
+db = firestore.client()
+
+#How to add an inspection:
+# inspection = {
+# "areaName": "E5",
+
+# "buildingAreaId": "/buildingArea/pj5p0BaCEebdNw5zerYC",
+
+# "date": "29 March 2024 at 04:32:06 UTC+1",
+
+# "droneId": "/drones/Zs5h4QJjRRpnEr8e6bk1",
+
+# "errorMsg": "",
+
+# "floorId": 3,
+
+# "floorName": "5",
+
+# "inspectionType": "escaperoute inspection",
+
+# "status": "Success",
+
+# "statusMsg": "Vellykket inspeksjon utført, ingen avvik funnet" }
+# update_time, city_ref = db.collection("inspection").add(inspection)
 
 # For ROS2 Nodes Communication
 ros2_ports = {
@@ -98,6 +128,16 @@ def handle_manual_control(data):
     threading.Thread(target=send_message, args=(port, data)).start()
     return data + " Done"
 
+@app.route("/generate/detension", methods=["POST"])
+def detension_finder():
+    inspection = request.json['inspection']
+    print("Got it", inspection)
+    result =find_detensions(inspectionId=inspection, db=db, firebase=firebase)
+    if(not result):
+        return json.dumps({'success':False}), 500, {'ContentType':'application/json'}
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'} 
+
+
 if __name__ == '__main__':
-    listen_for_video_feed(ros2_ports['video_feed'])  # Start listening for video feed
+    #listen_for_video_feed(ros2_ports['video_feed'])  # Start listening for video feed
     sio.run(app, debug=True, use_reloader=False)
