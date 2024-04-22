@@ -30,6 +30,7 @@ def predict_and_detect(chosen_model, img, classes=[], conf=0.5, rectangle_thickn
 def find_detensions(inspectionId, db, firebase):
     frameCounter =0
     lastResultsFrame = 0
+    crop_percent = 0.2
     skipCount = 30
     detensionState = []
     bucket = storage.bucket("drone-control-db.appspot.com",firebase)
@@ -55,7 +56,7 @@ def find_detensions(inspectionId, db, firebase):
             print("Loop finished")
             break
         img_width = img.shape[1]
-        crop_amount = 0.1*img_width
+        crop_amount = int(crop_percent*img_width)
         cropped_img = img[:, crop_amount:img_width-crop_amount]
         result_img, results = predict_and_detect(model, cropped_img, classes=[1,10,11,12,13,24,25,26,28,30,32,36,56,57,58,59,60,71,72], conf=0.8)
         if(len(results)> 0 and len(results[0].boxes) > 0):
